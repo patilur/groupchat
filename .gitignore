@@ -1,0 +1,15 @@
+# Security: Do NOT commit your secrets
+.env
+
+# Dependencies: These are installed via 'npm install'
+node_modules/
+
+# Logs: Prevent your local/production logs from being uploaded
+logs/
+*.log
+npm-debug.log*
+
+# Database/OS files
+.DS_Store
+
+package-lock.json
