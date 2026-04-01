@@ -9,7 +9,8 @@ const app = express();
 const path = require('path');
 const cors = require('cors');
 const userRoute = require('./routes/userRoutes')
-//const { User, Expense, Payment, ForgotPassword, FileDownload } = require('./model/index');
+const chatRoutes = require('./routes/chatRoutes');
+const { User, Chat } = require('./model/index');
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use(cors());
 // Routes
 
 app.use('/user', userRoute);
+app.use('/chat', chatRoutes);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
