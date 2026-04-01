@@ -19,7 +19,7 @@ function onSubmitHandler(event) {
     };
 
     // Create user
-    axios.post("/user/addUser", userDetails)
+    axios.post("http://localhost:3000/user/addUser", userDetails)
         .then((response) => {
 
             console.log(response.data.data);
@@ -61,12 +61,12 @@ function LogIn(event) {
         password
     };
 
-    axios.post("/user/login", loginDetails)
+    axios.post("http://localhost:3000/user/login", loginDetails)
         .then((response) => {
 
             alert("Login successful");
 
-            console.log(response.data);
+            // console.log("----", response.data);
             localStorage.setItem('token', response.data.token)
             // Redirect to home page
             window.location.href = "/home";

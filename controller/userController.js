@@ -52,6 +52,7 @@ const addEntries = async (req, res) => {
     }
 };
 const login = async (req, res) => {
+    console.log("LOGIN API HIT");
     const { loginId, password } = req.body;
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginId);
     const isPhone = /^[0-9]{10}$/.test(loginId);
@@ -79,7 +80,7 @@ const login = async (req, res) => {
 
         // compare password
         const isMatch = await bcrypt.compare(password, user.password);
-        
+
         if (!isMatch) {
             return res.status(401).json({
                 message: "Invalid password"

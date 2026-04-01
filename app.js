@@ -26,6 +26,11 @@ app.use(morgan('combined', { stream: accesslogstream }));
 app.use(express.json());
 app.use(cors());
 
+
+// Routes
+
+app.use('/user', userRoute);
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Signup Page
@@ -44,9 +49,6 @@ app.get('/home', (req, res) => {
 });
 
 
-// Routes
-
-app.use('/user', userRoute);
 
 
 // 404 Handler (ALWAYS LAST)
