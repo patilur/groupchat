@@ -1,5 +1,10 @@
 const Chat = require('../model/chatModel');
 const Users = require('../model/signupModel');
+let wss; // global reference
+
+const setWebSocketServer = (serverInstance) => {
+    wss = serverInstance;
+};
 
 const sendMessage = async (req, res) => {
     try {
@@ -15,6 +20,15 @@ const sendMessage = async (req, res) => {
             message,
             userId: req.user.id,
         });
+
+        // Broadcast message
+        if (wss) {
+            wss.clients.forEach((client) => {
+                if (client.readyState === 1) {
+                    client.send(JSON.stringify(chat));
+                }
+            });
+        }
 
         res.status(201).json({
             message: "Message sent",
@@ -51,4 +65,4 @@ const getMessages = async (req, res) => {
     }
 }
 
-module.exports = { sendMessage, getMessages };
+module.exports = { sendMessage, getMessages, setWebSocketServer };

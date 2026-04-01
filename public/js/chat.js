@@ -1,7 +1,12 @@
 //Load all messages when page opens
 window.onload = loadMessages;
 
+const socket = new WebSocket("ws://localhost:3000");
 
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log("New message:", data);
+};
 //Send Message
 function sendMessage() {
     const input = document.getElementById("messageInput");

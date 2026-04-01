@@ -8,12 +8,20 @@ const fs = require('fs');
 const app = express();
 const path = require('path');
 const cors = require('cors');
+const WebSocket = require('ws');
+const http = require('http');
 const userRoute = require('./routes/userRoutes')
 const chatRoutes = require('./routes/chatRoutes');
 const { User, Chat } = require('./model/index');
 const dotenv = require("dotenv");
 dotenv.config();
+const server = http.createServer(app);
 
+// Create WebSocket server
+const wss = new WebSocket.Server({ server });
+
+const { setWebSocketServer } = require('./controller/chatController');
+setWebSocketServer(wss);
 // Logging Middleware
 app.use((req, res, next) => {
     logger.info(`${req.method} request to ${req.url}`);
@@ -58,11 +66,31 @@ app.use((req, res) => {
     res.status(404).send("Page not found");
 });
 
+
+
+wss.on('connection', (ws, req) => {
+    console.log('New client connected');
+
+    ws.on('message', (message) => {
+        console.log('Received:', message.toString());
+
+        // Broadcast to all clients
+        wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(message.toString());
+            }
+        });
+    });
+
+    ws.on('close', () => {
+        console.log('Client disconnected');
+    });
+});
+
 db.sync({ force: false }).then(() => {
-    app.listen(process.env.PORT || 3000, (err) => {
-        console.log('Server running')
-        //console.log("Loaded Key:", process.env.GEMINI_API_KEY ? "Exists" : "Missing");
-    })
+    server.listen(process.env.PORT || 3000, () => {
+        console.log('Server running');
+    });
 }).catch((err) => {
     console.log(err);
 })
