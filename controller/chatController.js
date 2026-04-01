@@ -1,9 +1,9 @@
 const Chat = require('../model/chatModel');
+const Users = require('../model/signupModel');
 
 const sendMessage = async (req, res) => {
     try {
         const { message } = req.body;
-        const userId = req.user.userId; // from JWT
 
         if (!message) {
             return res.status(400).json({
@@ -13,7 +13,7 @@ const sendMessage = async (req, res) => {
 
         const chat = await Chat.create({
             message,
-            userId
+            userId: req.user.id,
         });
 
         res.status(201).json({
@@ -29,4 +29,26 @@ const sendMessage = async (req, res) => {
     }
 };
 
-module.exports = { sendMessage };
+const getMessages = async (req, res) => {
+    try {
+        //Fetch all chat messages along with the user who sent each message, sorted by time
+        //SELECT Chats.*, Users.id, Users.name FROM Chats JOIN Users ON Chats.userId = Users.id;
+        const messages = await Chat.findAll({
+            include: {
+                model: Users,
+                attributes: ['id', 'name'] // avoid password
+            },
+            order: [['createdAt', 'ASC']]
+        });
+
+        res.status(200).json(messages);
+
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed to fetch messages",
+            error: err.message
+        });
+    }
+}
+
+module.exports = { sendMessage, getMessages };
