@@ -4,25 +4,13 @@
 
 const Chat = require('../model/chatModel');
 const Users = require('../model/signupModel');
-//const WebSocket = require('ws');
-
-// let wss; // global reference
-
-// // Set WebSocket server instance
-// const setWebSocketServer = (serverInstance) => {
-//     wss = serverInstance;
-// };
-
-let io;
-
-const setSocketIO = (ioInstance) => {
-    io = ioInstance;
-};
+const { getIO } = require("../socket_io/index");
 
 // Send Message Controller
 const sendMessage = async (req, res) => {
     try {
         const { message } = req.body;
+        const io = getIO();
 
         if (!message) {
             return res.status(400).json({
@@ -91,5 +79,5 @@ const getMessages = async (req, res) => {
 module.exports = {
     sendMessage,
     getMessages,
-    setSocketIO
+
 };
