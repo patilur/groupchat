@@ -4,8 +4,25 @@ window.onload = loadMessages;
 const socket = new WebSocket("ws://localhost:3000");
 
 socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log("New message:", data);
+    const response = JSON.parse(event.data);
+
+    if (response.type === "NEW_MESSAGE") {
+        const msg = response.data;
+
+        addMessage(
+            msg.message,
+            "received",
+            msg.user.name,
+            msg.createdAt
+        );
+    }
+};
+socket.onclose = () => {
+    console.log("Disconnected from server");
+};
+
+socket.onerror = (error) => {
+    console.log("WebSocket error:", error);
 };
 //Send Message
 function sendMessage() {
@@ -36,9 +53,6 @@ function sendMessage() {
             );
 
             input.value = "";
-
-            // OPTIONAL: reload full chat
-            loadMessages();
         })
         .catch(err => console.log(err));
 }
@@ -111,7 +125,3 @@ function getUserIdFromToken(token) {
     const payload = JSON.parse(atob(token.split('.')[1]));
     return payload.userId;
 }
-
-
-// Auto refresh every 5 sec
-setInterval(loadMessages, 5000);

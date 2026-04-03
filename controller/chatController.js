@@ -1,11 +1,15 @@
 const Chat = require('../model/chatModel');
 const Users = require('../model/signupModel');
+const WebSocket = require('ws');
+
 let wss; // global reference
 
+// Set WebSocket server instance
 const setWebSocketServer = (serverInstance) => {
     wss = serverInstance;
 };
 
+// Send Message Controller
 const sendMessage = async (req, res) => {
     try {
         const { message } = req.body;
@@ -16,23 +20,40 @@ const sendMessage = async (req, res) => {
             });
         }
 
+        // Save message in DB
         const chat = await Chat.create({
             message,
             userId: req.user.id,
         });
 
-        // Broadcast message
+        // Fetch user info (for better response)
+        const user = await Users.findByPk(req.user.id, {
+            attributes: ['id', 'name']
+        });
+
+        const messageData = {
+            id: chat.id,
+            message: chat.message,
+            user,
+            createdAt: chat.createdAt
+        };
+
+        // Broadcast message via WebSocket
         if (wss) {
             wss.clients.forEach((client) => {
-                if (client.readyState === 1) {
-                    client.send(JSON.stringify(chat));
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: "NEW_MESSAGE",
+                        data: messageData
+                    }));
                 }
             });
         }
 
+        // Send API response (ONLY ONCE, outside loop)
         res.status(201).json({
             message: "Message sent",
-            data: chat
+            data: messageData
         });
 
     } catch (err) {
@@ -43,14 +64,13 @@ const sendMessage = async (req, res) => {
     }
 };
 
+// Get All Messages
 const getMessages = async (req, res) => {
     try {
-        //Fetch all chat messages along with the user who sent each message, sorted by time
-        //SELECT Chats.*, Users.id, Users.name FROM Chats JOIN Users ON Chats.userId = Users.id;
         const messages = await Chat.findAll({
             include: {
                 model: Users,
-                attributes: ['id', 'name'] // avoid password
+                attributes: ['id', 'name']
             },
             order: [['createdAt', 'ASC']]
         });
@@ -63,6 +83,10 @@ const getMessages = async (req, res) => {
             error: err.message
         });
     }
-}
+};
 
-module.exports = { sendMessage, getMessages, setWebSocketServer };
+module.exports = {
+    sendMessage,
+    getMessages,
+    setWebSocketServer
+};
