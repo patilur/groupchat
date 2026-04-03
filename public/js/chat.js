@@ -1,20 +1,30 @@
 //Load all messages when page opens
 window.onload = loadMessages;
 
+//Create Socket.IO connection=>Connects frontend → backend in real-time
 //const socket = new WebSocket("ws://localhost:3000");
-const socket = io("http://localhost:3000");
+const token = localStorage.getItem("token");
 
+console.log("Frontend token:", token); // DEBUG
 
+const socket = io("http://localhost:3000", {
+    auth: {
+        token: token
+    }
+});
+
+//When connection is successful
 socket.on("connect", () => {
     console.log("Connected:", socket.id);
 });
 
+//This listens to server event
 socket.on("newMessage", (msg) => {
     const token = localStorage.getItem("token");
     const currentUserId = getUserIdFromToken(token);
 
     const type = msg.user.id === currentUserId ? "sent" : "received";
-
+    //add message to ui
     addMessage(
         msg.message,
         type,
@@ -60,7 +70,7 @@ function sendMessage() {
 
     const token = localStorage.getItem("token");
 
-    //Clear input immediately (better UX)
+    //Clear input immediately
     input.value = "";
 
     axios.post("http://localhost:3000/chat/send",

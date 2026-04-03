@@ -1,3 +1,7 @@
+//When a user sends a message, it is first stored in the database using a REST API. 
+//Then, Socket.IO is used to emit the message to all connected clients in real time. 
+//The clients listen for this event and update the UI instantly.
+
 const Chat = require('../model/chatModel');
 const Users = require('../model/signupModel');
 //const WebSocket = require('ws');
@@ -44,8 +48,8 @@ const sendMessage = async (req, res) => {
             createdAt: chat.createdAt
         };
 
-        // Broadcast message via WebSocket
-
+        // Broadcast message 
+        //io.emit()=>Send event to ALL connected clients
         if (io) {
             io.emit("newMessage", messageData);
         }

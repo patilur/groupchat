@@ -16,9 +16,12 @@ const { User, Chat } = require('./model/index');
 const dotenv = require("dotenv");
 dotenv.config();
 const { Server } = require("socket.io");
+const { setSocketIO } = require('./controller/chatController');
+const jwt = require("jsonwebtoken");
 
-
-// Create WebSocket server
+// Create HTTP server
+const server = http.createServer(app);
+//Attach Socket.IO to your HTTP server. Now same server handles:HTTP requests (API),WebSocket connections (real-time)
 const io = new Server(server, {
     cors: {
         origin: "*",
@@ -28,7 +31,7 @@ const io = new Server(server, {
 
 //const { setWebSocketServer } = require('./controller/chatController');
 //setWebSocketServer(wss);
-const { setSocketIO } = require('./controller/chatController');
+//Pass io to controller
 setSocketIO(io);
 
 // Logging Middleware
@@ -43,7 +46,35 @@ app.use(compression());
 app.use(morgan('combined', { stream: accesslogstream }));
 app.use(express.json());
 app.use(cors());
+io.use(async (socket, next) => {
 
+    try {
+        const token = socket.handshake.auth.token;
+        console.log("Token:", token);
+
+        if (!token) {
+            return next(new Error("Authorization token is missing"));
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log("Decode,", decoded)
+        
+        if (!decoded) {
+            return next(new Error("Invalid or Expired token"));
+        }
+
+        // Use await to ensure the user is found before moving to the next step
+        const user = await User.findByPk(decoded.userId);
+
+        if (!user) {
+            return next(new Error("User not found"));
+        }
+        console.log("user,", user)
+        socket.user = user;
+        next();
+    } catch (err) {
+        return next(new Error('Authentication failed'));
+    }
+})
 
 // Routes
 
@@ -76,10 +107,10 @@ app.use((req, res) => {
 });
 
 io.on("connection", (socket) => {
-    console.log("User connected:", socket.id);
+    console.log("User connected:", socket.user.name);
 
     socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
+        console.log("User disconnected:", socket.user.name);
     });
 });
 
@@ -109,3 +140,7 @@ db.sync({ force: false }).then(() => {
 }).catch((err) => {
     console.log(err);
 })
+
+
+//"Socket.IO must be attached to the HTTP server instance, not directly to the Express app,
+// because it works on top of the HTTP protocol."
