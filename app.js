@@ -12,7 +12,7 @@ const cors = require('cors');
 const http = require('http');
 const userRoute = require('./routes/userRoutes')
 const chatRoutes = require('./routes/chatRoutes');
-const { User, Chat } = require('./model/index');
+const { Users, Chat } = require('./model/index');
 const dotenv = require("dotenv");
 dotenv.config();
 const { Server } = require("socket.io");
@@ -50,25 +50,25 @@ io.use(async (socket, next) => {
 
     try {
         const token = socket.handshake.auth.token;
-        console.log("Token:", token);
+        //console.log("Token:", token);
 
         if (!token) {
             return next(new Error("Authorization token is missing"));
         }
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("Decode,", decoded)
-        
+        //console.log("Decode,", decoded)
+
         if (!decoded) {
             return next(new Error("Invalid or Expired token"));
         }
 
         // Use await to ensure the user is found before moving to the next step
-        const user = await User.findByPk(decoded.userId);
+        const user = await Users.findByPk(decoded.userId);
 
         if (!user) {
             return next(new Error("User not found"));
         }
-        console.log("user,", user)
+        // console.log("user,", user)
         socket.user = user;
         next();
     } catch (err) {
