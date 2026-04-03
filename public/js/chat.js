@@ -1,29 +1,56 @@
 //Load all messages when page opens
 window.onload = loadMessages;
 
-const socket = new WebSocket("ws://localhost:3000");
+//const socket = new WebSocket("ws://localhost:3000");
+const socket = io("http://localhost:3000");
 
-socket.onmessage = (event) => {
-    const response = JSON.parse(event.data);
 
-    if (response.type === "NEW_MESSAGE") {
-        const msg = response.data;
+socket.on("connect", () => {
+    console.log("Connected:", socket.id);
+});
 
-        addMessage(
-            msg.message,
-            "received",
-            msg.user.name,
-            msg.createdAt
-        );
-    }
-};
-socket.onclose = () => {
+socket.on("newMessage", (msg) => {
+    const token = localStorage.getItem("token");
+    const currentUserId = getUserIdFromToken(token);
+
+    const type = msg.user.id === currentUserId ? "sent" : "received";
+
+    addMessage(
+        msg.message,
+        type,
+        msg.user.name,
+        msg.createdAt
+    );
+});
+
+socket.on("disconnect", () => {
     console.log("Disconnected from server");
-};
+});
 
-socket.onerror = (error) => {
-    console.log("WebSocket error:", error);
-};
+socket.on("connect_error", (err) => {
+    console.log("Connection error:", err);
+});
+// socket.onmessage = (event) => {
+//     const response = JSON.parse(event.data);
+
+//     if (response.type === "NEW_MESSAGE") {
+//         const msg = response.data;
+
+//         addMessage(
+//             msg.message,
+//             "received",
+//             msg.user.name,
+//             msg.createdAt
+//         );
+//     }
+// };
+// socket.onclose = () => {
+//     console.log("Disconnected from server");
+// };
+
+// socket.onerror = (error) => {
+//     console.log("WebSocket error:", error);
+// };
 //Send Message
 function sendMessage() {
     const input = document.getElementById("messageInput");
@@ -33,6 +60,9 @@ function sendMessage() {
 
     const token = localStorage.getItem("token");
 
+    //Clear input immediately (better UX)
+    input.value = "";
+
     axios.post("http://localhost:3000/chat/send",
         { message },
         {
@@ -41,19 +71,6 @@ function sendMessage() {
             }
         }
     )
-        .then(res => {
-            const msg = res.data.data;
-
-            // Show message instantly
-            addMessage(
-                msg.message,
-                "sent",
-                "You",
-                msg.createdAt
-            );
-
-            input.value = "";
-        })
         .catch(err => console.log(err));
 }
 

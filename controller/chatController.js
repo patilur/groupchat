@@ -1,12 +1,18 @@
 const Chat = require('../model/chatModel');
 const Users = require('../model/signupModel');
-const WebSocket = require('ws');
+//const WebSocket = require('ws');
 
-let wss; // global reference
+// let wss; // global reference
 
-// Set WebSocket server instance
-const setWebSocketServer = (serverInstance) => {
-    wss = serverInstance;
+// // Set WebSocket server instance
+// const setWebSocketServer = (serverInstance) => {
+//     wss = serverInstance;
+// };
+
+let io;
+
+const setSocketIO = (ioInstance) => {
+    io = ioInstance;
 };
 
 // Send Message Controller
@@ -39,17 +45,10 @@ const sendMessage = async (req, res) => {
         };
 
         // Broadcast message via WebSocket
-        if (wss) {
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({
-                        type: "NEW_MESSAGE",
-                        data: messageData
-                    }));
-                }
-            });
-        }
 
+        if (io) {
+            io.emit("newMessage", messageData);
+        }
         // Send API response (ONLY ONCE, outside loop)
         res.status(201).json({
             message: "Message sent",
@@ -88,5 +87,5 @@ const getMessages = async (req, res) => {
 module.exports = {
     sendMessage,
     getMessages,
-    setWebSocketServer
+    setSocketIO
 };

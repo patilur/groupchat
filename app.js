@@ -8,20 +8,29 @@ const fs = require('fs');
 const app = express();
 const path = require('path');
 const cors = require('cors');
-const WebSocket = require('ws');
+//const WebSocket = require('ws');
 const http = require('http');
 const userRoute = require('./routes/userRoutes')
 const chatRoutes = require('./routes/chatRoutes');
 const { User, Chat } = require('./model/index');
 const dotenv = require("dotenv");
 dotenv.config();
-const server = http.createServer(app);
+const { Server } = require("socket.io");
+
 
 // Create WebSocket server
-const wss = new WebSocket.Server({ server });
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+    }
+});
+//const wss = new WebSocket.Server({ server });
 
-const { setWebSocketServer } = require('./controller/chatController');
-setWebSocketServer(wss);
+//const { setWebSocketServer } = require('./controller/chatController');
+//setWebSocketServer(wss);
+const { setSocketIO } = require('./controller/chatController');
+setSocketIO(io);
+
 // Logging Middleware
 app.use((req, res, next) => {
     logger.info(`${req.method} request to ${req.url}`);
@@ -66,26 +75,32 @@ app.use((req, res) => {
     res.status(404).send("Page not found");
 });
 
+io.on("connection", (socket) => {
+    console.log("User connected:", socket.id);
 
-
-wss.on('connection', (ws, req) => {
-    console.log('New client connected');
-
-    ws.on('message', (message) => {
-        console.log('Received:', message.toString());
-
-        // Broadcast to all clients
-        wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(message.toString());
-            }
-        });
-    });
-
-    ws.on('close', () => {
-        console.log('Client disconnected');
+    socket.on("disconnect", () => {
+        console.log("User disconnected:", socket.id);
     });
 });
+
+// wss.on('connection', (ws, req) => {
+//     console.log('New client connected');
+
+//     ws.on('message', (message) => {
+//         console.log('Received:', message.toString());
+
+//         // Broadcast to all clients
+//         wss.clients.forEach((client) => {
+//             if (client.readyState === WebSocket.OPEN) {
+//                 client.send(message.toString());
+//             }
+//         });
+//     });
+
+//     ws.on('close', () => {
+//         console.log('Client disconnected');
+//     });
+// });
 
 db.sync({ force: false }).then(() => {
     server.listen(process.env.PORT || 3000, () => {
