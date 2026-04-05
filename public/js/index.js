@@ -68,6 +68,7 @@ function LogIn(event) {
 
             // console.log("----", response.data);
             localStorage.setItem('token', response.data.token)
+            localStorage.setItem("email", response.data.data.email);
             // Redirect to home page
             window.location.href = "/home";
 

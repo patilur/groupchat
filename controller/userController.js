@@ -1,12 +1,16 @@
 const Users = require('../model/signupModel');
 const db = require('../utils/db-connection');
+const { Op } = require("sequelize");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const dotenv = require("dotenv");
 dotenv.config();
 
 const generateAccessToken = (user) => {
-    return jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
+    return jwt.sign({
+        userId: user.id,
+        email: user.email
+    }, process.env.JWT_SECRET);
 }
 const addEntries = async (req, res) => {
     const { name, email, phonenumber, password } = req.body;
@@ -99,5 +103,23 @@ const login = async (req, res) => {
         });
     }
 }
+const searchUsers = async (req, res) => {
+    try {
+        const { email } = req.query;
 
-module.exports = { addEntries, login }
+        const users = await Users.findAll({
+            where: {
+                email: {
+                    [Op.like]: `%${email}%`
+                }
+            },
+            attributes: ['id', 'email', 'name']
+        });
+
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = { addEntries, login, searchUsers }

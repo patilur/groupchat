@@ -77,14 +77,26 @@
             padding: 10px;
             border-top: 1px solid #ddd;
         }
+
+        .search {
+            width: 25%;
+            background-color: #f4f4f4;
+            padding: 20px;
+            border-right: 1px solid #ddd;
+        }
     </style>
 
 </head>
 
 <body>
+    <div class="search">
+        <input type="text" id="searchEmail" placeholder="Enter email" oninput="searchUsers()" />
+        <div id="suggestions"></div>
+
+        <button onclick="startChat()">Join Chat</button>
+    </div>
 
     <div class="chat-container">
-
 
         <div class="chat-header">
             <h5>Group Chat</h5>

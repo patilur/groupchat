@@ -10,7 +10,12 @@ const Chat = sequelize.define('Chat', {
     message: {
         type: DataTypes.TEXT,
         allowNull: false
+    },
+    roomId: {
+        type: DataTypes.STRING,
+        allowNull: false
     }
+
 });
 
 module.exports = Chat;

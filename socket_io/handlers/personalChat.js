@@ -1,34 +1,47 @@
+const { Chat, Users } = require('../../model/index');
+
 module.exports = (socket, io) => {
 
-    socket.on("join_room", (roomId) => {
+    socket.on("join_room", (roomId, otherUserEmail) => {
         socket.join(roomId);
+        console.log(`${socket.user.name} joined ${roomId}`);
 
-        // store email in socket
-        socket.email = roomId;
-
-        console.log(`User ${socket.user.id} joined room: ${roomId}`);
+        //Send alert to OTHER user
+        socket.to(roomId).emit("user_connected", {
+            message: `${socket.user.name} connected to ${otherUserEmail}`
+        });
     });
 
-    socket.on("send_message", (data) => {
-        console.log("DATA RECEIVED:", data);
-        const { roomId, message } = data;
 
-        if (!message) return;
+    socket.on("send_message", async (data) => {
+        try {
+            const { roomId, message } = data;
 
-        const messageData = {
-            message,
-            user: {
-                id: socket.user.id,
-                name: socket.user.name,
-                email: socket.email || "global"
-            },
-            createdAt: new Date()
-        };
+            if (!roomId || !message) return;
 
-        if (roomId) {
+            // ✅ Save to DB
+            const chat = await Chat.create({
+                message,
+                roomId,
+                userId: socket.user.id
+            });
+
+            const messageData = {
+                id: chat.id,
+                message,
+                roomId,
+                user: {
+                    id: socket.user.id,
+                    name: socket.user.name,
+                    email: socket.user.email
+                },
+                createdAt: chat.createdAt
+            };
+
             io.to(roomId).emit("receive_message", messageData);
-        } else {
-            io.emit("receive_message", messageData);
+
+        } catch (err) {
+            console.log(err.message);
         }
     });
 };

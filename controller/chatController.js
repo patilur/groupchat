@@ -6,45 +6,38 @@ const Chat = require('../model/chatModel');
 const Users = require('../model/signupModel');
 const { getIO } = require("../socket_io/index");
 
-// Send Message Controller
 const sendMessage = async (req, res) => {
     try {
         const { message, roomId } = req.body;
         const io = getIO();
 
-        if (!message) {
+        if (!message || !roomId) {
             return res.status(400).json({
-                message: "Message cannot be empty"
+                message: "Message & roomId required"
             });
         }
 
-        // Save message in DB
+        //Save with roomId
         const chat = await Chat.create({
             message,
+            roomId,
             userId: req.user.id,
         });
 
         const user = await Users.findByPk(req.user.id, {
-            attributes: ['id', 'name']
+            attributes: ['id', 'name', 'email']
         });
 
         const messageData = {
             id: chat.id,
-            message: chat.message,
+            message,
+            roomId,
             user,
             createdAt: chat.createdAt
         };
 
-        //MAIN FIX
-        if (roomId) {
-            //send only to room
-            io.to(roomId).emit("receive_message", messageData);
-            console.log("Room message:", roomId);
-        } else {
-            //global chat
-            io.emit("receive_message", messageData);
-            console.log("Global message");
-        }
+        //Emit ONLY to room
+        io.to(roomId).emit("receive_message", messageData);
 
         res.status(201).json({
             message: "Message sent",
@@ -53,35 +46,33 @@ const sendMessage = async (req, res) => {
 
     } catch (err) {
         res.status(500).json({
-            message: "Something went wrong",
-            error: err.message
+            message: err.message
         });
     }
 };
 
-// Get All Messages
-const getMessages = async (req, res) => {
+// Get messages by room
+const getRoomMessages = async (req, res) => {
     try {
+        const { roomId } = req.params;
+
         const messages = await Chat.findAll({
+            where: { roomId },
             include: {
                 model: Users,
-                attributes: ['id', 'name']
+                attributes: ['id', 'name', 'email']
             },
             order: [['createdAt', 'ASC']]
         });
 
-        res.status(200).json(messages);
+        res.json(messages);
 
     } catch (err) {
-        res.status(500).json({
-            message: "Failed to fetch messages",
-            error: err.message
-        });
+        res.status(500).json({ message: err.message });
     }
 };
 
 module.exports = {
     sendMessage,
-    getMessages,
-
+    getRoomMessages
 };
