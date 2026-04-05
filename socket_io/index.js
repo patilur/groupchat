@@ -1,7 +1,7 @@
 //Attach Socket.IO to your HTTP server. Now same server handles:HTTP requests (API),WebSocket connections (real-time)
 const { Server } = require("socket.io");
 const socketMiddleware = require("./middleware");
-const chatHandler = require("./handlers/chat");
+//const chatHandler = require("./handlers/chat");
 const personalChatHandler = require("./handlers/personalChat");
 
 let io;
@@ -21,7 +21,7 @@ const initSocket = (server) => {
         console.log("User connected:", socket.user.name);
 
         // Attach chat events
-        chatHandler(socket, io);
+        //chatHandler(socket, io);
 
 
         //Add personal chat

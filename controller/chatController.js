@@ -9,7 +9,7 @@ const { getIO } = require("../socket_io/index");
 // Send Message Controller
 const sendMessage = async (req, res) => {
     try {
-        const { message } = req.body;
+        const { message, roomId } = req.body;
         const io = getIO();
 
         if (!message) {
@@ -24,7 +24,6 @@ const sendMessage = async (req, res) => {
             userId: req.user.id,
         });
 
-        // Fetch user info (for better response)
         const user = await Users.findByPk(req.user.id, {
             attributes: ['id', 'name']
         });
@@ -36,12 +35,17 @@ const sendMessage = async (req, res) => {
             createdAt: chat.createdAt
         };
 
-        // Broadcast message 
-        //io.emit()=>Send event to ALL connected clients
-        if (io) {
-            io.emit("newMessage", messageData);
+        //MAIN FIX
+        if (roomId) {
+            //send only to room
+            io.to(roomId).emit("receive_message", messageData);
+            console.log("Room message:", roomId);
+        } else {
+            //global chat
+            io.emit("receive_message", messageData);
+            console.log("Global message");
         }
-        // Send API response (ONLY ONCE, outside loop)
+
         res.status(201).json({
             message: "Message sent",
             data: messageData

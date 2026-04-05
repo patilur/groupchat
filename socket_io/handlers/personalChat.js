@@ -1,34 +1,34 @@
-// socket-io/handlers/personalChat.js
-
 module.exports = (socket, io) => {
 
-    //Join personal room
     socket.on("join_room", (roomId) => {
         socket.join(roomId);
+
+        // store email in socket
+        socket.email = roomId;
+
         console.log(`User ${socket.user.id} joined room: ${roomId}`);
     });
 
-    //Send personal message
     socket.on("send_message", (data) => {
+        console.log("DATA RECEIVED:", data);
         const { roomId, message } = data;
 
-        if (!roomId || !message) {
-            return;
-        }
+        if (!message) return;
 
         const messageData = {
             message,
             user: {
                 id: socket.user.id,
-                name: socket.user.name
+                name: socket.user.name,
+                email: socket.email || "global"
             },
             createdAt: new Date()
         };
 
-        //Send to only that room
-        io.to(roomId).emit("receive_message", messageData);
-
-        console.log(`Message sent to room ${roomId}`);
+        if (roomId) {
+            io.to(roomId).emit("receive_message", messageData);
+        } else {
+            io.emit("receive_message", messageData);
+        }
     });
-
 };

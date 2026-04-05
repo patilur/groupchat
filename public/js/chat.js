@@ -9,7 +9,7 @@ console.log("Frontend token:", token); // DEBUG
 
 const socket = io("http://localhost:3000", {
     auth: {
-        token: token
+        token: token,
     }
 });
 
@@ -18,20 +18,20 @@ socket.on("connect", () => {
     console.log("Connected:", socket.id);
 });
 
-//This listens to server event
-socket.on("newMessage", (msg) => {
+socket.on("receive_message", (msg) => {
     const token = localStorage.getItem("token");
     const currentUserId = getUserIdFromToken(token);
 
     const type = msg.user.id === currentUserId ? "sent" : "received";
-    //add message to ui
+
     addMessage(
         msg.message,
         type,
-        msg.user.name,
+        msg.user.name + "(" + msg.user.email + ")",
         msg.createdAt
     );
 });
+
 
 socket.on("disconnect", () => {
     console.log("Disconnected from server");
@@ -40,48 +40,53 @@ socket.on("disconnect", () => {
 socket.on("connect_error", (err) => {
     console.log("Connection error:", err);
 });
-// socket.onmessage = (event) => {
-//     const response = JSON.parse(event.data);
 
-//     if (response.type === "NEW_MESSAGE") {
-//         const msg = response.data;
-
-//         addMessage(
-//             msg.message,
-//             "received",
-//             msg.user.name,
-//             msg.createdAt
-//         );
-//     }
-// };
-// socket.onclose = () => {
-//     console.log("Disconnected from server");
-// };
-
-// socket.onerror = (error) => {
-//     console.log("WebSocket error:", error);
-// };
-//Send Message
 function sendMessage() {
     const input = document.getElementById("messageInput");
     const message = input.value.trim();
 
     if (!message) return;
 
-    const token = localStorage.getItem("token");
+    socket.emit("send_message", {
+        roomId: window.currentRoom, // null = global
+        message: message
+    });
 
-    //Clear input immediately
     input.value = "";
+}
 
-    axios.post("http://localhost:3000/chat/send",
-        { message },
-        {
-            headers: {
-                Authorization: token
-            }
-        }
-    )
-        .catch(err => console.log(err));
+function joinChat() {
+    const email = document.getElementById("emailInput").value.trim();
+
+    if (!email) {
+        alert("No email → global chat mode");
+        window.currentRoom = null;
+        return;
+    }
+
+
+
+    socket.emit("join_room", email);
+
+
+    window.currentRoom = roomId;
+    //Show alert
+    alert(`Joined room: ${roomId}`);
+    console.log("Joined room:", roomId);
+}
+
+function sendMessage() {
+    const input = document.getElementById("messageInput");
+    const message = input.value.trim();
+
+    if (!message) return;
+    console.log("Sending roomId:", window.currentRoom);
+    socket.emit("send_message", {
+        roomId: window.currentRoom, // null = global
+        message: message
+    });
+
+    input.value = "";
 }
 
 
