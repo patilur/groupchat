@@ -1,3 +1,4 @@
+
 // ================= INIT =================
 const token = localStorage.getItem("token");
 
@@ -7,28 +8,32 @@ const socket = io("http://localhost:3000", {
 
 let currentRoom = null;
 
-// ================= HELPERS =================
-function getUserIdFromToken(token) {
-    return JSON.parse(atob(token.split('.')[1])).userId;
+// ================= SAFE TOKEN DECODE =================
+function decodeToken(token) {
+    try {
+        return JSON.parse(atob(token.split('.')[1]));
+    } catch {
+        return {};
+    }
 }
 
-function getEmailFromToken(token) {
-    return JSON.parse(atob(token.split('.')[1])).email;
-}
-socket.on("user_connected", (data) => {
-    alert(data.message);
-});
 // ================= SOCKET =================
 socket.on("connect", () => {
     console.log("Connected:", socket.id);
 });
 
 socket.on("receive_message", (msg) => {
-    const myId = getUserIdFromToken(token);
+    const myId = decodeToken(token).userId;
 
     const type = msg.user.id === myId ? "sent" : "received";
 
     addMessage(msg.message, msg.user.name, type);
+});
+
+//USER CONNECTED ALERT
+socket.on("user_connected", (data) => {
+    alert(data.message);
+    addSystemMessage(data.message);
 });
 
 socket.on("disconnect", () => {
@@ -36,44 +41,70 @@ socket.on("disconnect", () => {
 });
 
 // ================= START CHAT =================
+// public/js/chat.js
+
 async function startChat() {
     const searchedEmail = document.getElementById("searchEmail").value.trim();
     const myEmail = localStorage.getItem("email");
 
-    if (!searchedEmail) return alert("Enter email");
+    if (!searchedEmail) return alert("Please enter an email");
+    if (searchedEmail === myEmail) return alert("You cannot chat with yourself");
 
-    if (searchedEmail === myEmail) {
-        return alert("You cannot chat with yourself");
+    try {
+        // STEP 1: Prevent Dummy Emails - Validate user exists in DB
+        const response = await axios.get(
+            `http://localhost:3000/user/search?email=${searchedEmail}`,
+            { headers: { Authorization: token } }
+        );
+
+        // Check if the exact user exists
+        const userExists = response.data.find(u => u.email === searchedEmail);
+        if (!userExists) {
+            return alert("User not found in database. Please enter a valid registered email.");
+        }
+
+        // STEP 2: Generate Unique Room ID by sorting emails alphabetically
+        const roomId = [myEmail, searchedEmail].sort().join("_");
+        currentRoom = roomId;
+
+        // Update UI
+        document.querySelector(".chat-header h5").innerText = `Chat with ${searchedEmail}`;
+
+        // STEP 3: Join the room via Socket.IO
+        socket.emit("join_room", roomId, searchedEmail);
+
+        // Load existing history for this specific room
+        loadMessages(roomId);
+
+    } catch (err) {
+        console.error("Verification error:", err);
+        alert("Could not verify user.");
     }
-
-    //CREATE SAME ROOM FOR BOTH USERS
-    const roomId = [myEmail, searchedEmail].sort().join("_");
-
-    currentRoom = roomId;
-
-    //PASS OTHER USER EMAIL
-    socket.emit("join_room", roomId, searchedEmail);
-
-    loadMessages(roomId);
 }
 
 // ================= SEND MESSAGE =================
 async function sendMessage() {
-    const msg = document.getElementById("messageInput").value;
+    const msgInput = document.getElementById("messageInput");
+    const msg = msgInput.value.trim();
 
     if (!msg || !currentRoom) return;
 
-    const token = localStorage.getItem("token");
 
-    //Save to DB via API
-    await axios.post("http://localhost:3000/chat/send", {
-        message: msg,
-        roomId: currentRoom
-    }, {
-        headers: { Authorization: token }
-    });
 
-    document.getElementById("messageInput").value = "";
+    try {
+        await axios.post("http://localhost:3000/chat/send", {
+            message: msg,
+            roomId: currentRoom
+        }, {
+            headers: { Authorization: token }
+        });
+
+        msgInput.value = "";
+
+    } catch (err) {
+        alert("Message failed");
+        console.log(err);
+    }
 }
 
 // ================= LOAD MESSAGES =================
@@ -87,12 +118,17 @@ async function loadMessages(roomId) {
         const chatBox = document.getElementById("chatMessages");
         chatBox.innerHTML = "";
 
-        const myId = getUserIdFromToken(token);
+        const myId = decodeToken(token).userId;
 
         res.data.forEach(msg => {
+            const myId = decodeToken(token).userId;
             const type = msg.userId === myId ? "sent" : "received";
 
-           addMessage(msg.message, msg.User?.name || msg.user?.name, type);
+            // Sequelize 'include' often returns the object as 'User' (singular) 
+            // even if the model is named 'Users'
+            const username = msg.User ? msg.User.name : "Unknown";
+
+            addMessage(msg.message, username, type)
         });
 
     } catch (err) {
@@ -100,17 +136,15 @@ async function loadMessages(roomId) {
     }
 }
 
-// ================= ADD MESSAGE TO UI =================
+// ================= ADD MESSAGE =================
 function addMessage(message, username, type = "received") {
     const chatBox = document.getElementById("chatMessages");
 
     const div = document.createElement("div");
     div.classList.add("message");
 
-    // Align message
     div.style.textAlign = type === "sent" ? "right" : "left";
 
-    // Format time
     const time = new Date().toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit'
@@ -124,8 +158,24 @@ function addMessage(message, username, type = "received") {
 
     chatBox.appendChild(div);
 
-    // Auto scroll
-    chatBox.scrollTop = chatBox.scrollHeight;
+    //Smooth scroll
+    chatBox.scrollTo({
+        top: chatBox.scrollHeight,
+        behavior: "smooth"
+    });
+}
+
+// ================= SYSTEM MESSAGE =================
+function addSystemMessage(msg) {
+    const chatBox = document.getElementById("chatMessages");
+
+    const div = document.createElement("div");
+    div.style.textAlign = "center";
+    div.style.color = "gray";
+    div.style.margin = "10px 0";
+    div.innerText = msg;
+
+    chatBox.appendChild(div);
 }
 
 // ================= SEARCH USERS =================
@@ -164,3 +214,4 @@ async function searchUsers() {
         console.log("Search error:", err);
     }
 }
+

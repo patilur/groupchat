@@ -3,12 +3,13 @@ const { Chat, Users } = require('../../model/index');
 module.exports = (socket, io) => {
 
     socket.on("join_room", (roomId, otherUserEmail) => {
+        // The socket joins the unique sorted ID room
         socket.join(roomId);
-        console.log(`${socket.user.name} joined ${roomId}`);
+        console.log(`${socket.user.name} joined room: ${roomId}`);
 
-        //Send alert to OTHER user
+        // Notify the other user in the room that someone connected
         socket.to(roomId).emit("user_connected", {
-            message: `${socket.user.name} connected to ${otherUserEmail}`
+            message: `${socket.user.name} is now online.`
         });
     });
 

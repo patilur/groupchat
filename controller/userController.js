@@ -103,19 +103,17 @@ const login = async (req, res) => {
         });
     }
 }
+
+// controller/userController.js
 const searchUsers = async (req, res) => {
     try {
         const { email } = req.query;
-
         const users = await Users.findAll({
             where: {
-                email: {
-                    [Op.like]: `%${email}%`
-                }
+                email: email // Changed from Op.like to exact match
             },
             attributes: ['id', 'email', 'name']
         });
-
         res.json(users);
     } catch (err) {
         res.status(500).json({ message: err.message });
