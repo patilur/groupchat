@@ -137,6 +137,11 @@
         <div id="chatMessages" class="chat-messages"></div>
 
         <div class="chat-input">
+            <input type="file" id="fileInput" style="display: none;" onchange="uploadMedia()" />
+
+            <button class="btn btn-outline-secondary me-2" onclick="document.getElementById('fileInput').click()">
+                📎
+            </button>
             <input type="text" id="messageInput" class="form-control me-2" placeholder="Type a message...">
             <button class="btn btn-primary" onclick="sendMessage()">Send</button>
         </div>

@@ -5,6 +5,7 @@
 
 const { Group, Users, Chat } = require('../model/index');
 const { getIO } = require("../socket_io/index");
+const { uploadToS3 } = require('../services/s3Service');
 
 const sendMessage = async (req, res) => {
     try {
@@ -105,9 +106,6 @@ const getUserGroups = async (req, res) => {
     }
 }
 
-// controller/chatController.js
-// controller/chatController.js
-
 const addMemberToGroup = async (req, res) => {
     try {
         const { groupId, userEmail } = req.body;
@@ -139,10 +137,54 @@ const addMemberToGroup = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+const shareMedia = async (req, res) => {
+    try {
+        const file = req.file; // From multer middleware
+        const { roomId } = req.body;
+
+        if (!file || !roomId) {
+            return res.status(400).json({ message: "File and Room ID required" });
+        }
+
+        // 1. Upload the buffer to S3 using your service
+        const fileUrl = await uploadToS3(file.buffer, file.originalname, file.mimetype);
+
+        // 2. Save the S3 URL as a message in the database
+        const chat = await Chat.create({
+            message: fileUrl,
+            roomId: roomId,
+            userId: req.user.id
+        });
+
+        // 3. Prepare data for real-time broadcast
+        const user = await Users.findByPk(req.user.id, {
+            attributes: ['id', 'name']
+        });
+
+        const messageData = {
+            id: chat.id,
+            message: fileUrl,
+            roomId: roomId,
+            user: { id: user.id, name: user.name },
+            isMedia: true, // Flag to help frontend render <img> tags
+            createdAt: chat.createdAt
+        };
+
+        // 4. Emit via Socket.IO
+        getIO().to(roomId).emit("receive_message", messageData);
+
+        res.status(201).json({ message: "Media shared", url: fileUrl });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
 module.exports = {
     sendMessage,
     getRoomMessages,
     createGroup,
     getUserGroups,
-    addMemberToGroup
+    addMemberToGroup,
+    shareMedia
 };

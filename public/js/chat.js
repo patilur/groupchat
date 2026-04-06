@@ -173,12 +173,19 @@ function addMessage(message, username, type) {
     const div = document.createElement("div");
     div.classList.add("message", type);
 
+    // Simple check: does the message string look like an S3 image URL?
+    const isImage = /\.(jpeg|jpg|gif|png|webp)$/i.test(message) && message.startsWith('http');
+
+    const content = isImage
+        ? `<img src="${message}" class="img-fluid rounded mt-2" style="max-width: 250px; cursor: pointer;" onclick="window.open('${message}', '_blank')">`
+        : `<span>${message}</span>`;
+
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     div.innerHTML = `
         <div class="bubble">
-            <strong>${username}</strong><br>
-            ${message}<br>
-            <span class="timestamp">${time}</span>
+            <small class="fw-bold">${username}</small><br>
+            ${content}<br>
+            <small class="text-muted" style="font-size: 0.7rem;">${time}</small>
         </div>
     `;
     chatBox.appendChild(div);
@@ -248,5 +255,35 @@ async function searchUsers() {
         });
     } catch (err) {
         console.error("Search error:", err);
+    }
+}
+
+// public/js/chat.js
+
+async function uploadMedia() {
+    const fileInput = document.getElementById("fileInput");
+    const file = fileInput.files[0];
+
+    if (!file) return;
+    if (!currentRoom) return alert("Please select a chat first");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("roomId", currentRoom);
+
+    try {
+        // Send to your new /upload route
+        const res = await axios.post("http://localhost:3000/chat/upload", formData, {
+            headers: {
+                "Authorization": token,
+                "Content-Type": "multipart/form-data"
+            }
+        });
+
+        console.log("Media uploaded:", res.data.url);
+        fileInput.value = ""; // Reset the input
+    } catch (err) {
+        console.error("Upload error:", err);
+        alert(err.response?.data?.message || "Failed to upload media");
     }
 }
