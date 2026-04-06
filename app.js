@@ -12,7 +12,9 @@ const { initSocket } = require("./socket_io");
 const http = require('http');
 const userRoute = require('./routes/userRoutes')
 const chatRoutes = require('./routes/chatRoutes');
-const { Users, Chat } = require('./model/index');
+const { Users, Chat, Group, ArchivedChat } = require('./model/index');
+const cron = require('node-cron');
+const { archiveOldChats } = require('./services/archiveService');
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -39,7 +41,11 @@ app.use('/user', userRoute);
 app.use('/chat', chatRoutes);
 
 app.use(express.static(path.join(__dirname, 'public')));
-
+// Schedule to run every night at 00:00 (Midnight)
+cron.schedule('0 0 * * *', () => {
+    console.log('Running nightly chat archival...');
+    archiveOldChats();
+});
 // Signup Page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'signup.html'));
