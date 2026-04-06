@@ -110,7 +110,9 @@ const searchUsers = async (req, res) => {
         const { email } = req.query;
         const users = await Users.findAll({
             where: {
-                email: email // Changed from Op.like to exact match
+                email: {
+                    [Op.like]: `%${email}%` // Change to partial match
+                }
             },
             attributes: ['id', 'email', 'name']
         });

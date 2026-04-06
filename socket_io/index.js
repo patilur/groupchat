@@ -3,6 +3,7 @@ const { Server } = require("socket.io");
 const socketMiddleware = require("./middleware");
 //const chatHandler = require("./handlers/chat");
 const personalChatHandler = require("./handlers/personalChat");
+const groupChatHandler = require("./handlers/groupHandler");
 
 let io;
 
@@ -26,6 +27,7 @@ const initSocket = (server) => {
 
         //Add personal chat
         personalChatHandler(socket, io);
+        groupChatHandler(io, socket);
 
         socket.on("disconnect", () => {
             console.log("User disconnected:", socket.user.name);
