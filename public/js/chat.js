@@ -3,6 +3,19 @@
 // ================= INIT =================
 const token = localStorage.getItem("token");
 
+let typingTimer;
+let myId = null; // Defined globally at the top
+
+function getMyId() {
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            myId = payload.userId;
+        } catch (e) { console.error("Token decoding failed"); }
+    }
+}
+getMyId(); // Call immediately so myId is ready for socket listeners
+
 // Best Practice: Pass the token during the initial connection for middleware authentication
 const socket = io("http://localhost:3000", {
     auth: { token }
@@ -24,14 +37,21 @@ function decodeToken(token) {
 socket.on("connect", () => {
     console.log("Connected to server:", socket.id);
 });
-
-// Best Practice: Centralized listener for all message types (Personal and Group)
 socket.on("receive_message", (msg) => {
-    // Only display the message if it belongs to the room the user is currently viewing
+    // 1. Only display if it's the current room
     if (msg.roomId === currentRoom) {
-        const myId = decodeToken(token).userId;
-        const type = msg.user.id === myId ? "sent" : "received";
-        addMessage(msg.message, msg.user.name, type);
+        // Use the globally defined myId
+        const type = msg.userId === myId ? "sent" : "received";
+
+        // Support different naming conventions for the user object
+        const username = msg.user?.name || msg.User?.name || "Unknown";
+
+        addMessage(msg.message, username, type);
+
+        // 2. Trigger Smart Replies only if someone ELSE sent the message
+        if (msg.userId !== myId) {
+            showSmartReplies(msg.message);
+        }
     }
 });
 
@@ -141,6 +161,9 @@ async function sendMessage() {
     socket.emit("send_message", payload, (response) => {
         if (response.status === "ok") {
             msgInput.value = "";
+            // Add this to clear AI suggestions after you send a message
+            document.getElementById("smartReplyButtons").innerHTML = "";
+            document.getElementById("predictiveText").innerText = "";
         } else {
             alert("Message failed to send");
         }
@@ -286,4 +309,58 @@ async function uploadMedia() {
         console.error("Upload error:", err);
         alert(err.response?.data?.message || "Failed to upload media");
     }
+}
+
+// public/js/chat.js
+
+
+// Debounce helper to wait for user to stop typing
+function debouncePredictive() {
+    clearTimeout(typingTimer);
+    const text = document.getElementById("messageInput").value;
+    const predDiv = document.getElementById("predictiveText");
+
+    if (text.length < 5) {
+        predDiv.innerText = ""; // Clear if text is too short
+        return;
+    }
+
+    typingTimer = setTimeout(async () => {
+        try {
+            const res = await axios.post('http://localhost:3000/chat/ai/predict', { text }, {
+                headers: { Authorization: token }
+            });
+            const predDiv = document.getElementById("predictiveText");
+            predDiv.innerText = res.data.suggestion ? `...${res.data.suggestion}` : "";
+
+            // Clicking suggestion fills the input
+            predDiv.onclick = () => {
+                document.getElementById("messageInput").value += res.data.suggestion;
+                predDiv.innerText = "";
+            };
+        } catch (err) { console.error("AI Error"); }
+    }, 800); // Wait 800ms
+}
+
+async function showSmartReplies(lastMessage) {
+    try {
+        const res = await axios.post('http://localhost:3000/chat/ai/replies', { lastMessage }, {
+            headers: { Authorization: token }
+        });
+
+        const container = document.getElementById("smartReplyButtons");
+        container.innerHTML = ""; // Clear old ones
+
+        res.data.replies.forEach(reply => {
+            const btn = document.createElement("button");
+            btn.className = "btn btn-xs btn-outline-info py-0 px-2 small";
+            btn.innerText = reply;
+            btn.onclick = () => {
+                document.getElementById("messageInput").value = reply;
+                sendMessage(); // Auto-send the smart reply
+                container.innerHTML = "";
+            };
+            container.appendChild(btn);
+        });
+    } catch (err) { console.error("Smart Reply Error"); }
 }

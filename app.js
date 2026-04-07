@@ -12,6 +12,7 @@ const { initSocket } = require("./socket_io");
 const http = require('http');
 const userRoute = require('./routes/userRoutes')
 const chatRoutes = require('./routes/chatRoutes');
+
 const { Users, Chat, Group, ArchivedChat } = require('./model/index');
 const cron = require('node-cron');
 const { archiveOldChats } = require('./services/archiveService');
